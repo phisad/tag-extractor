@@ -2,16 +2,15 @@ package de.phisad.tag.extractor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 
 public class ImageLabelFiles {
 
-    // Keeping the order
-    private final LinkedList<ImageLabelFile> files = new LinkedList<>();
+    private final Collection<ImageLabelFile> files = new ArrayList<>();
 
     // Keeping the structure
     private final Map<File, ImageLabelFile> directory2labels = new HashMap<>();

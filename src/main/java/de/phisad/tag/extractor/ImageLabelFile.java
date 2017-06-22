@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -47,7 +48,7 @@ public class ImageLabelFile {
 
     private final File labelFile;
 
-    private final Map<String, Collection<String>> name2labels = new TreeMap<>(PATH_COMPARATOR);
+    private final Map<String, Collection<String>> name2labels = new HashMap<>();
 
     private final ImageLabelFile parent;
 
@@ -114,7 +115,9 @@ public class ImageLabelFile {
 
     Collection<String> createLines() {
         final Collection<String> lines = new ArrayList<>();
-        for (Entry<String, Collection<String>> entry : name2labels.entrySet()) {
+        final Map<String, Collection<String>> treeMap = new TreeMap<>(PATH_COMPARATOR);
+        treeMap.putAll(name2labels);
+        for (Entry<String, Collection<String>> entry : treeMap.entrySet()) {
             final String fileName = entry.getKey();
             final Collection<String> labels = entry.getValue();
             if (labels.isEmpty()) {

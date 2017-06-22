@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.DirectoryWalker;
 import org.apache.commons.io.IOCase;
@@ -45,6 +47,8 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
     private ImageLabelFiles labelFiles = new ImageLabelFiles();
 
     private boolean trace = false;
+
+    private final Map<File, Boolean> directory2progress = new HashMap<>();
 
     private int currentFileCount;
 
@@ -117,7 +121,7 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
             }
             Metadata metadata = ImageMetadataReader.readMetadata(file);
             extractFromIptc(file, metadata);
-            
+
             File directory = file.getParentFile();
             if (showProgress(directory)) {
                 currentFileCount++;
@@ -129,24 +133,32 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
     }
 
     private void extractFromIptc(File file, Metadata metadata) {
-        IptcDirectory iptcDirectory = metadata.getFirstDirectoryOfType(IptcDirectory.class);
+        final IptcDirectory iptcDirectory = metadata.getFirstDirectoryOfType(IptcDirectory.class);
         if (iptcDirectory == null) {
             extractFromExif(file, metadata);
         } else {
-            List<String> keywords = iptcDirectory.getKeywords();
-            labelFiles.addLabels(file, keywords);
+            final List<String> keywords = iptcDirectory.getKeywords();
+            if (keywords == null) {
+                labelFiles.addLabels(file, NO_KEYWORDS);
+            } else {
+                labelFiles.addLabels(file, keywords);
+            }
         }
     }
 
     private void extractFromExif(File file, Metadata metadata) {
-        ExifIFD0Directory exifIFD0Directory = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+        final ExifIFD0Directory exifIFD0Directory = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
         if (exifIFD0Directory == null) {
             labelFiles.addLabels(file, NO_KEYWORDS);
         } else {
-            ExifIFD0Descriptor exifIFD0Descriptor = new ExifIFD0Descriptor(exifIFD0Directory);
-            String keywordsDescription = exifIFD0Descriptor.getWindowsKeywordsDescription();
-            List<String> keywords = Arrays.asList(StringUtils.split(keywordsDescription, ";"));
-            labelFiles.addLabels(file, keywords);
+            final ExifIFD0Descriptor exifIFD0Descriptor = new ExifIFD0Descriptor(exifIFD0Directory);
+            final String keywordsDescription = exifIFD0Descriptor.getWindowsKeywordsDescription();
+            if (keywordsDescription == null) {
+                labelFiles.addLabels(file, NO_KEYWORDS);
+            } else {
+                List<String> keywords = Arrays.asList(StringUtils.split(keywordsDescription, ";"));
+                labelFiles.addLabels(file, keywords);
+            }
         }
     }
 
@@ -210,7 +222,12 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
     // Show progress when only files are within the directory otherwise the
     // walker would confuse the output
     private boolean showProgress(File directory) {
-        return countFiles(directory) > 0 && onlyFiles(directory);
+        if (directory2progress.containsKey(directory)) {
+            return directory2progress.get(directory);
+        }
+        boolean showProgress = countFiles(directory) > 0 && onlyFiles(directory);
+        directory2progress.put(directory, showProgress);
+        return showProgress;
     }
 
     public ImageLabelFiles getLabelFiles() {
