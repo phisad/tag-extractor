@@ -6,11 +6,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -23,20 +24,50 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class ImageLabelFile {
 
-    private final File file;
+    private static final ImageLabelFile NONE = null;
+
+    private final File labelFile;
 
     private final Map<String, Collection<String>> name2labels = new HashMap<>();
 
+    private final ImageLabelFile parent;
+
     public ImageLabelFile(File directory) {
-        file = new File(directory, "label.csv");
+        this(directory, NONE);
     }
 
-    public void addLabel(File file, List<String> labels) {
-        addLabel(file.getName(), labels);
+    public ImageLabelFile(File directory, ImageLabelFile parent) {
+        this.parent = parent;
+        labelFile = new File(directory, "label.csv");
     }
 
-    public void addLabel(String fileName, List<String> labels) {
+    public void addLabels(File file, Collection<String> labels) {
+        propagate(file, labels, 0);
+    }
+
+    void addLabels(String fileName, Collection<String> labels) {
         name2labels.put(fileName, labels);
+    }
+
+    private void propagate(File file, Collection<String> labels, int levels) {
+        final String absolutePath = file.getAbsolutePath();
+        final String fileName = FilenameUtils.getName(absolutePath);
+
+        // attach upper directory names when propagating
+        final String path = FilenameUtils.getPath(absolutePath);
+        final String[] paths = StringUtils.split(path, File.separator);
+        String name = fileName;
+        for (int level = 1; level <= levels; level++) {
+            final String dirName = paths[paths.length - level];
+            name = dirName + File.separator + name;
+        }
+
+        if (isRoot()) {
+            name2labels.put(name, labels);
+        } else {
+            name2labels.put(name, labels);
+            parent.propagate(file, labels, ++levels);
+        }
     }
 
     public boolean hasKeywords(String... aKeywords) {
@@ -49,12 +80,17 @@ public class ImageLabelFile {
     }
 
     public boolean hasKeyword(String keyword) {
-        return name2labels.values().contains(keyword);
+        for (Collection<String> labels : name2labels.values()) {
+            if (labels.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void write() throws IOException {
         final Collection<String> lines = createLines();
-        FileUtils.writeLines(file, lines);
+        FileUtils.writeLines(labelFile, lines);
     }
 
     Collection<String> createLines() {
@@ -70,6 +106,15 @@ public class ImageLabelFile {
             }
         }
         return lines;
+    }
+
+    public boolean isRoot() {
+        return parent == NONE;
+    }
+
+    @Override
+    public String toString() {
+        return labelFile.getPath() + new HashSet<>(name2labels.values());
     }
 
 }

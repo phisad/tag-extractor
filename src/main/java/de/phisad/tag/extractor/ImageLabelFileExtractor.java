@@ -1,7 +1,6 @@
 package de.phisad.tag.extractor;
 
 import java.io.IOException;
-import java.util.Collection;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -12,10 +11,7 @@ import org.apache.commons.cli.Options;
 public class ImageLabelFileExtractor {
 
     public void extract(String aDirectory) throws IOException {
-        final Collection<ImageLabelFile> labelFiles = new ImageLabelFileCreator().createLabelFiles(aDirectory);
-        for (ImageLabelFile labelFile : labelFiles) {
-            labelFile.write();
-        }
+        new ImageLabelFileCreator().createLabelFiles(aDirectory);
     }
 
     public static void main(String[] args) throws Exception {

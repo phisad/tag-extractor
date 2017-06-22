@@ -13,7 +13,7 @@ public class ImageLabelFileTest {
     @Test
     public void createLine() {
         ImageLabelFile labelFile = new ImageLabelFile(new File(""));
-        labelFile.addLabel("Name", Arrays.asList("Label1", "Label2"));
+        labelFile.addLabels("Name", Arrays.asList("Label1", "Label2"));
 
         Collection<String> lines = labelFile.createLines();
         assertThat(lines).hasSize(1);

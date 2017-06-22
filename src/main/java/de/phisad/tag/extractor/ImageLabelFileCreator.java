@@ -8,19 +8,20 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.io.DirectoryWalker;
 import org.apache.commons.io.IOCase;
-import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.HiddenFileFilter;
 import org.apache.commons.lang3.StringUtils;
 
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifIFD0Descriptor;
+import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.iptc.IptcDirectory;
 
 /**
@@ -31,9 +32,11 @@ import com.drew.metadata.iptc.IptcDirectory;
  * @author Philipp
  *
  */
-public class ImageLabelFileCreator extends DirectoryWalker<ImageLabelFile> {
+public class ImageLabelFileCreator extends DirectoryWalker<Void> {
 
     private static final int INFINITE_DEPTH = -1;
+
+    private static final Collection<String> NO_KEYWORDS = Arrays.asList("none");
 
     private ImageLabelFiles labelFiles = new ImageLabelFiles();
 
@@ -84,7 +87,7 @@ public class ImageLabelFileCreator extends DirectoryWalker<ImageLabelFile> {
      * @throws IOException
      *             in case of problems
      */
-    public Collection<ImageLabelFile> createLabelFiles(String aDirectoryPath) throws IOException {
+    public Collection<Void> createLabelFiles(String aDirectoryPath) throws IOException {
         return createLabelFiles(new File(aDirectoryPath));
     }
 
@@ -96,30 +99,46 @@ public class ImageLabelFileCreator extends DirectoryWalker<ImageLabelFile> {
      * @throws IOException
      *             in case of problems
      */
-    public Collection<ImageLabelFile> createLabelFiles(File aDirectory) throws IOException {
-        Collection<ImageLabelFile> results = new ArrayList<ImageLabelFile>();
+    public Collection<Void> createLabelFiles(File aDirectory) throws IOException {
+        Collection<Void> results = new ArrayList<Void>();
         walk(aDirectory, results);
         return results;
     }
 
     @Override
-    protected void handleFile(File file, int depth, Collection<ImageLabelFile> results) throws IOException {
+    protected void handleFile(File file, int depth, Collection<Void> results) throws IOException {
         try {
             if (trace) {
                 System.out.println("Handle file '" + file.getName() + "' ...");
             }
             Metadata metadata = ImageMetadataReader.readMetadata(file);
-            IptcDirectory iptcDirectory = metadata.getFirstDirectoryOfType(IptcDirectory.class);
-            if (iptcDirectory == null) {
-                labelFiles.get().addLabel(file, Collections.<String>emptyList());
-            } else {
-                List<String> keywords = iptcDirectory.getKeywords();
-                labelFiles.get().addLabel(file, keywords);
-            }
+            extractFromIptc(file, metadata);
             currentFileCount++;
             displayProgress();
         } catch (ImageProcessingException e) {
             throw new IOException(e);
+        }
+    }
+
+    private void extractFromIptc(File file, Metadata metadata) {
+        IptcDirectory iptcDirectory = metadata.getFirstDirectoryOfType(IptcDirectory.class);
+        if (iptcDirectory == null) {
+            extractFromExif(file, metadata);
+        } else {
+            List<String> keywords = iptcDirectory.getKeywords();
+            labelFiles.addLabels(file, keywords);
+        }
+    }
+
+    private void extractFromExif(File file, Metadata metadata) {
+        ExifIFD0Directory exifIFD0Directory = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+        if (exifIFD0Directory == null) {
+            labelFiles.addLabels(file, NO_KEYWORDS);
+        } else {
+            ExifIFD0Descriptor exifIFD0Descriptor = new ExifIFD0Descriptor(exifIFD0Directory);
+            String keywordsDescription = exifIFD0Descriptor.getWindowsKeywordsDescription();
+            List<String> keywords = Arrays.asList(StringUtils.split(keywordsDescription, ";"));
+            labelFiles.addLabels(file, keywords);
         }
     }
 
@@ -152,18 +171,16 @@ public class ImageLabelFileCreator extends DirectoryWalker<ImageLabelFile> {
     }
 
     @Override
-    protected void handleDirectoryStart(File directory, int depth, Collection<ImageLabelFile> results)
-            throws IOException {
+    protected void handleDirectoryStart(File directory, int depth, Collection<Void> results) throws IOException {
         labelFiles.next(directory);
         System.out.println("Scan directory '" + directory.getName() + "' ...");
         directoryFileCount = directory.listFiles((FileFilter) HiddenFileFilter.VISIBLE).length;
         currentFileCount = 0;
+        displayProgress();
     }
 
     @Override
-    protected void handleDirectoryEnd(File directory, int depth, Collection<ImageLabelFile> results)
-            throws IOException {
-        results.add(labelFiles.get());
+    protected void handleDirectoryEnd(File directory, int depth, Collection<Void> results) throws IOException {
         displayProgressEnd();
     }
 

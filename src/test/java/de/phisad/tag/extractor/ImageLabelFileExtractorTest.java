@@ -6,7 +6,7 @@ import org.junit.Test;
 
 public class ImageLabelFileExtractorTest {
 
-    private static final File IMAGE = new File(ImageLabelFileCreatorTest.class.getResource("SUNP0331.JPG").getFile());
+    private static final File IMAGE = new File(ImageLabelFileCreatorTest.class.getResource("test.JPG").getFile());
 
     @Test
     public void extract() throws Exception {
