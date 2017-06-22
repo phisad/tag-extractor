@@ -1,6 +1,7 @@
 package de.phisad.tag.extractor;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +70,10 @@ public class ImageLabelFiles {
 
     public Collection<ImageLabelFile> getFiles() {
         return Collections.unmodifiableCollection(files);
+    }
+
+    public void writeLabelFile(File directory) throws IOException {
+        directory2labels.get(directory).write();
     }
 
 }

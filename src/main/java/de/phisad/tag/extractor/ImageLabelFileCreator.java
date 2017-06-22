@@ -1,8 +1,12 @@
 package de.phisad.tag.extractor;
 
+import static org.apache.commons.io.IOCase.INSENSITIVE;
 import static org.apache.commons.io.filefilter.FileFilterUtils.and;
+import static org.apache.commons.io.filefilter.FileFilterUtils.directoryFileFilter;
+import static org.apache.commons.io.filefilter.FileFilterUtils.fileFileFilter;
 import static org.apache.commons.io.filefilter.FileFilterUtils.prefixFileFilter;
 import static org.apache.commons.io.filefilter.FileFilterUtils.suffixFileFilter;
+import static org.apache.commons.io.filefilter.HiddenFileFilter.VISIBLE;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -56,7 +60,7 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
      * </pre>
      */
     public ImageLabelFileCreator() {
-        super(HiddenFileFilter.VISIBLE, suffixFileFilter(".JPG", IOCase.INSENSITIVE), INFINITE_DEPTH);
+        super(VISIBLE, suffixFileFilter(".JPG", IOCase.INSENSITIVE), INFINITE_DEPTH);
     }
 
     /**
@@ -113,8 +117,12 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
             }
             Metadata metadata = ImageMetadataReader.readMetadata(file);
             extractFromIptc(file, metadata);
-            currentFileCount++;
-            displayProgress();
+            
+            File directory = file.getParentFile();
+            if (showProgress(directory)) {
+                currentFileCount++;
+                displayProgress();
+            }
         } catch (ImageProcessingException e) {
             throw new IOException(e);
         }
@@ -173,15 +181,36 @@ public class ImageLabelFileCreator extends DirectoryWalker<Void> {
     @Override
     protected void handleDirectoryStart(File directory, int depth, Collection<Void> results) throws IOException {
         labelFiles.next(directory);
-        System.out.println("Scan directory '" + directory.getName() + "' ...");
-        directoryFileCount = directory.listFiles((FileFilter) HiddenFileFilter.VISIBLE).length;
-        currentFileCount = 0;
-        displayProgress();
+        System.out.println("\nScan directory '" + directory.getName() + "' ...");
+        if (showProgress(directory)) {
+            directoryFileCount = countFiles(directory);
+            currentFileCount = 0;
+            displayProgress();
+        }
+    }
+
+    private boolean onlyFiles(File directory) {
+        return directory.listFiles((FileFilter) and(VISIBLE, directoryFileFilter())).length == 0;
+    }
+
+    // exclude directories from count
+    private int countFiles(File directory) {
+        return directory
+                .listFiles((FileFilter) and(VISIBLE, fileFileFilter(), suffixFileFilter(".JPG", INSENSITIVE))).length;
     }
 
     @Override
     protected void handleDirectoryEnd(File directory, int depth, Collection<Void> results) throws IOException {
-        displayProgressEnd();
+        if (showProgress(directory)) {
+            displayProgressEnd();
+        }
+        labelFiles.writeLabelFile(directory);
+    }
+
+    // Show progress when only files are within the directory otherwise the
+    // walker would confuse the output
+    private boolean showProgress(File directory) {
+        return countFiles(directory) > 0 && onlyFiles(directory);
     }
 
     public ImageLabelFiles getLabelFiles() {
