@@ -1,12 +1,11 @@
 package de.phisad.tag.extractor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.Collection;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class ImageLabelFileCreatorTest {
@@ -14,7 +13,6 @@ public class ImageLabelFileCreatorTest {
     private static final File IMAGE = new File(ImageLabelFileCreatorTest.class.getResource("test.JPG").getFile());
 
     @Test
-    @Ignore
     public void createLabelFile_WithOneFile_IsNotEmpty() throws Exception {
         String dirPath = IMAGE.getParentFile().getAbsolutePath();
 

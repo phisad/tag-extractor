@@ -5,10 +5,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -26,9 +27,27 @@ public class ImageLabelFile {
 
     private static final ImageLabelFile NONE = null;
 
+    private static final Comparator<String> PATH_COMPARATOR = new Comparator<String>() {
+
+        @Override
+        public int compare(String o1, String o2) {
+            String[] path1 = StringUtils.split(o1, File.separator);
+            String[] path2 = StringUtils.split(o2, File.separator);
+            if (path1.length == path2.length) {
+                return o1.compareTo(o2);
+            }
+            if (path1.length > path2.length) {
+                // larger path comes at the end
+                return 1;
+            }
+            // smaller path comes at the beginning
+            return -1;
+        }
+    };
+
     private final File labelFile;
 
-    private final Map<String, Collection<String>> name2labels = new HashMap<>();
+    private final Map<String, Collection<String>> name2labels = new TreeMap<>(PATH_COMPARATOR);
 
     private final ImageLabelFile parent;
 
